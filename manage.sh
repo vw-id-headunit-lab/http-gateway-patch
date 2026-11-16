@@ -2,6 +2,7 @@
 set -eu
 umask 077
 BASE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SOURCE=${GATEWAY_SOURCE:-/lge/app_ro/http-gateway}
 COPY=/lge/app_rw/http-gateway-public-v5
 STATE=/data/lge/http-gateway-public-v5-state
 DROPIN=zz-public-internet-v4.conf
@@ -11,21 +12,24 @@ fail(){ echo "ERROR: $*" >&2; exit 1; }
 hash(){ sha256sum "$1" | { read -r digest rest; printf '%s\n' "$digest"; }; }
 rule_show(){ family=${1%:*}; priority=${1#*:}; ip -"$family" rule show | awk -v key="$priority:" '$1 == key'; }
 preflight(){
+    for command in sha256sum dd cp cat stat cmp chmod touch chown sed sort grep; do command -v "$command" >/dev/null 2>&1 || fail "missing $command"; done
     command -v socat >/dev/null 2>&1 || fail "factory socat is required"
     [ -r /etc/ssl/certs/ca-certificates.crt ] || fail "CA bundle missing"
     [ "$(id -u)" = 0 ] || fail 'root required'
     [ ! -e "$STATE" ] || fail 'state already exists; inspect status or rollback'
     [ ! -e "$COPY" ] || fail 'candidate directory already exists; preserve it for inspection'
     [ "$(id -u sint_sec_http-gateway)" = 943 ] && [ "$(id -u sint_sec_http-gateway-b2b)" = 942 ] || fail 'unexpected proxy UIDs'
-    [ "$(hash /lge/app_rw/http-gateway/http-gateway)" = eabdc3a57cefc34e07a4274e5791fad9d964bc81abe9cae36cc62d98e40db8e9 ] || fail 'B2C baseline differs'
-    [ "$(hash /lge/app_rw/http-gateway/http-gateway-b2b)" = 11632443b19322033330b73547290169790443fbe541f274b1b27302aeaadee5 ] || fail 'B2B baseline differs'
+    [ "$(hash "$SOURCE/http-gateway")" = 2ca01fa50943dc9188221a54e916d05ebed1e0cc0745a5537006bfa921cd2de2 ] || fail 'B2C factory baseline differs'
+    [ "$(hash "$SOURCE/http-gateway-b2b")" = 893b3c8c885bf874fd3c7eadac2420b7a95ab9797916c9e8b27c242ff23f257a ] || fail 'B2B factory baseline differs'
     (cd "$BASE" && sha256sum -c SHA256SUMS) || fail 'package hash mismatch'
     ip -4 route show table 20 | grep -q '^default ' || fail 'hotspot IPv4 uplink absent'
     ip -6 route show table 20 | grep -q '^default ' || fail 'hotspot IPv6 uplink absent'
     for unit in $UNITS; do
         name=${unit%.service}
         [ "$(systemctl show -p LoadState "$unit")" = LoadState=loaded ] || fail "missing $unit"
-        systemctl show -p ExecStart "$unit" | grep -F "path=/lge/app_rw/http-gateway/$name ;" >/dev/null || fail 'unexpected current execution path'
+        current_exec=$(systemctl show -p ExecStart "$unit")
+        if printf '%s\n' "$current_exec" | grep -F "path=/lge/app_ro/http-gateway/$name ;" >/dev/null; then :
+        else printf '%s\n' "$current_exec" | grep -F "path=/lge/app_rw/http-gateway/$name ;" >/dev/null || fail 'unexpected current execution path'; fi
         [ ! -e "/run/systemd/system/$unit.d/$DROPIN" ] || fail 'drop-in already exists'
     done
     for key in $KEYS; do [ -z "$(rule_show "$key")" ] || fail "routing priority occupied: $key"; done
@@ -96,7 +100,12 @@ apply(){
     trap 'exit 143' HUP TERM
     mkdir "$COPY"
     chmod 755 "$COPY"
-    for name in http-gateway http-gateway-b2b; do cp "$BASE/bin/$name" "$COPY/$name"; chmod 755 "$COPY/$name"; done
+    # Reconstruct exact v5 executables from local factory files, never shipped ELFs.
+    for name in http-gateway http-gateway-b2b; do
+        cp -p "$SOURCE/$name" "$COPY/$name"
+        sh "$BASE/patch_binary.sh" apply "$COPY/$name" "$STATE/file-backups"
+        chmod 755 "$COPY/$name"
+    done
     cp "$BASE/libgateway_tls.so" "$COPY/libgateway_tls.so"
     chmod 644 "$COPY/libgateway_tls.so"
     printf 'nameserver 221.6.4.66\noptions timeout:2 attempts:2\n' > "$COPY/resolv.conf"

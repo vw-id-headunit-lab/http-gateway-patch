@@ -53,6 +53,36 @@ Android 应用仍需联网授权和正确的代理配置。UID `942/943` 属于 
 
 普通 HTTP 默认允许 `80–100`、`443`、`1024–65535`。CONNECT 有独立端口限制；自动补 TLS 默认只处理 `443`。
 
+### 仅分发真正的 patch（原厂文件 → 当前 v5）
+
+仓库不再保存完整的 `http-gateway` / `http-gateway-b2b`。差量直接以 **2995 原厂文件** 为输入，不依赖 v2/v3 或其他旧补丁；每份程序只分发实际变化的 **57 字节**（12 个连续范围），输出与原仓库 v5 的 SHA-256 完全一致。`targets.tsv` 固定原厂/输出哈希，`manifest.json` 列出偏移和长度。现有 TLS 配套库 `libgateway_tls.so` 原样保留，不将其当作车机主程序差量。
+
+部署默认读取本机 `/lge/app_ro/http-gateway` 的原厂文件，先复制到可写候选目录再应用差量。另存的原厂目录可通过 `GATEWAY_SOURCE=/path/to/factory sh manage.sh preflight` 指定，apply 时使用同一变量。不要使用旧补丁的修改文件作为输入。未知输入会在改写之前退出。服务、TLS、DNS、开机恢复及 `manage.sh` 命令接口保留。
+
+部署前可独立验证文件（不会启动服务或写入原厂目录）：
+
+```sh
+sh patch_binary.sh check /path/to/factory/http-gateway
+cp -p /path/to/factory/http-gateway /path/to/writable/http-gateway
+sh patch_binary.sh apply /path/to/writable/http-gateway /path/to/local-backups
+sh patch_binary.sh rollback /path/to/writable/http-gateway /path/to/local-backups
+```
+
+安装器使用本机原厂文件制作候选，候选写入前后校验完整 SHA-256，文件备份仅在本机生成。`manage.sh rollback` 保留原有语义：撤销本次服务覆盖/选路并恢复此前服务路径；独立文件 helper 的 rollback 恢复候选文件原始字节和元数据。
+
+维护与打包：
+
+```sh
+python scripts/audit_distribution.py
+python -m unittest discover -s tests -v
+python scripts/package.py --output /local/releases/http-gateway-factory-patch.zip
+# 仅维护者重新生成差量时使用，所有完整输入/输出均放在仓库外：
+python scripts/generate_delta.py --factory-dir /local/factory \
+  --modified-dir /local/verified-v5 --output /local/delta-staging
+```
+
+CI 使用动态合成数据测试，不上传车机文件。打包采用显式白名单，重新打开 ZIP 校验成员与哈希。完整原文件、完整修改文件、完整反汇编和本机备份均禁止进入新包。差量重生成后需更新对应校验清单。历史提交及旧附件的处理见 [MIGRATION.md](MIGRATION.md)；删除当前树文件不代表历史已清除。
+
 ### 部署
 
 在软件包目录执行：
@@ -153,6 +183,14 @@ The table below lists destination ports. Proxy listening ports remain `50006/500
 | HTTPS on ports such as 8443 or 9443 | Requires changes to CONNECT rules and applicable TLS handling |
 
 Ordinary HTTP allows `80–100`, `443` and `1024–65535` by default. CONNECT has a separate port policy; automatic TLS wrapping handles only `443` by default.
+
+### True patch distribution (factory files → current v5)
+
+The complete `http-gateway` and `http-gateway-b2b` executables are no longer shipped. The patch takes **2995 factory files directly**, not v2/v3 outputs. Each executable needs only **57 changed bytes in 12 contiguous ranges**, reproducing the existing v5 SHA-256 exactly. The existing `libgateway_tls.so` TLS helper remains byte-identical.
+
+`manage.sh` reads factory inputs from `/lge/app_ro/http-gateway` by default; use the same `GATEWAY_SOURCE=/path/to/factory` for preflight and apply to override it. All changes are made to writable copies. Unknown inputs are rejected before modification. Existing TLS, DNS, routing, boot recovery and management commands are retained. File-only apply/rollback uses `patch_binary.sh`; deployment rollback keeps its existing service-path restoration behavior.
+
+Use `python scripts/audit_distribution.py`, `python -m unittest discover -s tests -v`, and `python scripts/package.py --output /local/releases/http-gateway-factory-patch.zip` to audit/test/package. Tests generate synthetic data instead of storing firmware fixtures. The allowlisted ZIP is reopened and checked. Full firmware programs, disassemblies and local backups are excluded. See [MIGRATION.md](MIGRATION.md) for history and old-attachment cleanup; deleting files at HEAD does not erase old commits.
 
 ### Deployment
 

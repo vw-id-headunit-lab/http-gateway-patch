@@ -1,0 +1,122 @@
+{
+  "version": "public-egress-v5-delta-only",
+  "distribution": "delta-only",
+  "artifacts": [
+    {
+      "name": "http-gateway",
+      "original_sha256": "2ca01fa50943dc9188221a54e916d05ebed1e0cc0745a5537006bfa921cd2de2",
+      "modified_sha256": "4223357e411e8c2d064ab7023929b1bec546269c579a7a844fc06dc0991a7b5c",
+      "original_size": 511312,
+      "modified_size": 511312,
+      "changed_ranges": [
+        {
+          "offset": 170296,
+          "length": 8
+        },
+        {
+          "offset": 271908,
+          "length": 1
+        },
+        {
+          "offset": 271910,
+          "length": 2
+        },
+        {
+          "offset": 360200,
+          "length": 2
+        },
+        {
+          "offset": 360272,
+          "length": 2
+        },
+        {
+          "offset": 360275,
+          "length": 3
+        },
+        {
+          "offset": 360279,
+          "length": 1
+        },
+        {
+          "offset": 360308,
+          "length": 3
+        },
+        {
+          "offset": 360640,
+          "length": 2
+        },
+        {
+          "offset": 360643,
+          "length": 9
+        },
+        {
+          "offset": 371576,
+          "length": 16
+        },
+        {
+          "offset": 372328,
+          "length": 8
+        }
+      ],
+      "changed_byte_count": 57
+    },
+    {
+      "name": "http-gateway-b2b",
+      "original_sha256": "893b3c8c885bf874fd3c7eadac2420b7a95ab9797916c9e8b27c242ff23f257a",
+      "modified_sha256": "e6107cfb385449f94506b37d05d7364bc6a99fce5755ad2335e9b5f81e057143",
+      "original_size": 511320,
+      "modified_size": 511320,
+      "changed_ranges": [
+        {
+          "offset": 170296,
+          "length": 8
+        },
+        {
+          "offset": 271908,
+          "length": 1
+        },
+        {
+          "offset": 271910,
+          "length": 2
+        },
+        {
+          "offset": 360200,
+          "length": 2
+        },
+        {
+          "offset": 360272,
+          "length": 2
+        },
+        {
+          "offset": 360275,
+          "length": 3
+        },
+        {
+          "offset": 360279,
+          "length": 1
+        },
+        {
+          "offset": 360308,
+          "length": 3
+        },
+        {
+          "offset": 360640,
+          "length": 2
+        },
+        {
+          "offset": 360643,
+          "length": 9
+        },
+        {
+          "offset": 371576,
+          "length": 16
+        },
+        {
+          "offset": 372328,
+          "length": 8
+        }
+      ],
+      "changed_byte_count": 57
+    }
+  ]
+}

@@ -1,2 +1,25 @@
-.DS_Store
-*.log
+# OEM artifacts, local analysis, build products and local installation state.
+originals/
+dist/
+build/
+evidence/
+verification/
+private/
+local-inputs/
+local-output/
+backups/
+*.zip
+*.tar
+*.gz
+*.7z
+*.elf
+*.o
+*.so
+*.apk
+*.jar
+*.i64
+*.idb
+*.asm
+*.disasm
+__pycache__/
+*.pyc

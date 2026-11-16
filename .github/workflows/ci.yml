@@ -1,0 +1,14 @@
+name: factory delta-only publication
+on: [push, pull_request]
+jobs:
+  distribution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/audit_distribution.py
+      - run: python -m unittest discover -s tests -v
+      - run: sh -n manage.sh boot-restore.sh patch_binary.sh metadata.sh
+      - run: python scripts/package.py --output "$RUNNER_TEMP/http-gateway-factory-patch.zip"
